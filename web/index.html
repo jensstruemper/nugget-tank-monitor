@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0f766e">
+<title>Nugget Tankmonitor</title>
+<style>
+  :root {
+    --bg: #f4f6f8; --card: #ffffff; --text: #1a1f24; --muted: #5b6672;
+    --line: #d9dee3; --accent: #0f766e; --accent-text: #ffffff;
+    --fresh: #2563eb; --grey: #6b7280; --warn: #b45309; --bad: #b91c1c; --ok: #15803d;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e1215; --card: #181e24; --text: #e6e9ec; --muted: #9aa5b1;
+      --line: #2b343d; --accent: #14b8a6; --accent-text: #05201c;
+      --fresh: #60a5fa; --grey: #9ca3af; --warn: #f59e0b; --bad: #f87171; --ok: #4ade80;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+           padding: 14px 16px; background: var(--card); border-bottom: 1px solid var(--line);
+           position: sticky; top: 0; z-index: 2; }
+  header h1 { font-size: 18px; margin: 0; }
+  #status { font-size: 13px; color: var(--muted); }
+  main { max-width: 760px; margin: 0 auto; padding: 16px; display: grid; gap: 16px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+  .card h2 { font-size: 16px; margin: 0 0 12px; }
+  .tanks { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 560px) { .tanks { gap: 10px; } .tank { padding: 12px; } }
+  .gauge { display: flex; gap: 14px; align-items: stretch; margin: 6px 0 12px; }
+  .gauge .vessel { flex: 0 0 64px; height: 150px; border: 2px solid var(--line); border-radius: 10px;
+                   background: var(--bg); position: relative; overflow: hidden; }
+  .gauge .fill { position: absolute; left: 0; right: 0; bottom: 0; height: 0; transition: height .5s; }
+  .fresh .gauge .fill { background: var(--fresh); }
+  .grey  .gauge .fill { background: var(--grey); }
+  .gauge .vessel.stale .fill { opacity: .35; }
+  .gauge .ticks { position: absolute; inset: 0; pointer-events: none; }
+  .gauge .ticks span { position: absolute; right: 0; width: 8px; border-top: 1px solid var(--muted); opacity: .6; }
+  .gauge .ticks span.major { width: 14px; }
+  .gauge .readout { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; min-width: 0; }
+  .tank .pct { font-size: 44px; font-weight: 600; line-height: 1; }
+  .tank .liters { color: var(--muted); margin-top: 4px; }
+  .bar { height: 14px; background: var(--line); border-radius: 7px; overflow: hidden; margin: 12px 0; }
+  .bar > div { height: 100%; width: 0; transition: width .4s; }
+  .fresh .bar > div { background: var(--fresh); }
+  .grey  .bar > div { background: var(--grey); }
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; font-size: 13px; color: var(--muted); }
+  .kv b { color: var(--text); font-weight: 500; }
+  .flags span { display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 10px;
+                border: 1px solid var(--line); margin: 2px 4px 0 0; color: var(--muted); }
+  .flags span.bad { color: var(--bad); border-color: var(--bad); }
+  .flags span.warn { color: var(--warn); border-color: var(--warn); }
+  .flags span.ok { color: var(--ok); border-color: var(--ok); }
+  button { font: inherit; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line);
+           background: var(--card); color: var(--text); cursor: pointer; }
+  button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  button:disabled { opacity: .5; cursor: default; }
+  input, select { font: inherit; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line);
+                  background: var(--bg); color: var(--text); width: 100%; }
+  label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 4px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; margin-top: 10px; }
+  .row > div { flex: 1 1 120px; }
+  .row > button { flex: 0 0 auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 10px; }
+  th, td { text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 500; font-size: 12px; }
+  td button { padding: 4px 10px; font-size: 13px; }
+  .notice { border-left: 4px solid var(--warn); padding: 10px 12px; background: var(--card);
+            border-radius: 8px; font-size: 14px; }
+  .hidden { display: none !important; }
+  #log { font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted);
+         max-height: 160px; overflow: auto; white-space: pre-wrap; margin: 0; }
+  .stagebtns button.active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  details summary { cursor: pointer; color: var(--muted); font-size: 14px; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Nugget Tankmonitor</h1>
+    <div id="status">Nicht verbunden</div>
+  </div>
+  <button id="btnConnect" class="primary">Verbinden</button>
+</header>
+
+<main>
+  <div id="noBle" class="notice hidden">
+    Dieser Browser unterstützt kein Web Bluetooth. Auf Android und am Rechner Chrome oder Edge
+    verwenden, auf dem iPhone die App <b>Bluefy</b> und darin diese Seite öffnen.
+  </div>
+
+  <section class="tanks">
+    <div class="card tank fresh" id="tank0">
+      <h2>Frischwasser</h2>
+      <div class="gauge">
+        <div class="vessel"><div class="fill"></div>
+          <div class="ticks"><span class="major" style="top:0"></span><span style="top:25%"></span>
+            <span class="major" style="top:50%"></span><span style="top:75%"></span></div>
+        </div>
+        <div class="readout"><div class="pct">–</div><div class="liters">–</div></div>
+      </div>
+      <div class="kv">
+        <span>Ford-Anzeige</span><b class="stage">–</b>
+        <span>LEVEL</span><b class="cl">–</b>
+        <span>LIQ_REF</span><b class="cr">–</b>
+        <span>ENV_REF</span><b class="ce">–</b>
+        <span>Sensorwert s</span><b class="s">–</b>
+      </div>
+      <div class="flags"></div>
+    </div>
+    <div class="card tank grey" id="tank1">
+      <h2>Grauwasser</h2>
+      <div class="gauge">
+        <div class="vessel"><div class="fill"></div>
+          <div class="ticks"><span class="major" style="top:0"></span><span style="top:25%"></span>
+            <span class="major" style="top:50%"></span><span style="top:75%"></span></div>
+        </div>
+        <div class="readout"><div class="pct">–</div><div class="liters">–</div></div>
+      </div>
+      <div class="kv">
+        <span>Ford-Anzeige</span><b class="stage">–</b>
+        <span>LEVEL</span><b class="cl">–</b>
+        <span>LIQ_REF</span><b class="cr">–</b>
+        <span>ENV_REF</span><b class="ce">–</b>
+        <span>Sensorwert s</span><b class="s">–</b>
+      </div>
+      <div class="flags"></div>
+    </div>
+  </section>
+
+  <section id="controls" class="hidden" style="display:grid;gap:16px">
+    <div class="card" id="cal0"></div>
+    <div class="card" id="cal1"></div>
+
+    <div class="card">
+      <h2>Ford-Anzeige</h2>
+      <p style="font-size:14px;color:var(--muted);margin:0 0 6px">
+        Schwellen in Prozent, ab denen die originale Anzeige die nächste Stufe zeigt.
+        Die Hysterese verhindert Flackern bei schwappendem Wasser.
+      </p>
+      <div class="row">
+        <div><label>Frisch → 1/3</label><input id="thr0" type="number" min="1" max="100"></div>
+        <div><label>Frisch → 2/3</label><input id="thr1" type="number" min="1" max="100"></div>
+        <div><label>Frisch → voll</label><input id="thr2" type="number" min="1" max="100"></div>
+        <div><label>Grau → voll</label><input id="thrG" type="number" min="1" max="100"></div>
+        <div><label>Hysterese</label><input id="hyst" type="number" min="0" max="40"></div>
+        <button id="btnFord">Übernehmen</button>
+      </div>
+      <div class="row">
+        <div>
+          <label>Frischwasser-Anzeige testen</label>
+          <div class="stagebtns" data-tank="0">
+            <button data-stage="255">Auto</button><button data-stage="0">Leer</button>
+            <button data-stage="1">1/3</button><button data-stage="2">2/3</button><button data-stage="3">Voll</button>
+          </div>
+        </div>
+        <div>
+          <label>Grauwasser-Anzeige testen</label>
+          <div class="stagebtns" data-tank="1">
+            <button data-stage="255">Auto</button><button data-stage="0">Leer</button><button data-stage="1">Voll</button>
+          </div>
+        </div>
+      </div>
+      <p style="font-size:13px;color:var(--muted);margin:8px 0 0">
+        Ein erzwungener Zustand gilt nur, solange die Verbindung besteht.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>Sensor</h2>
+      <div class="row">
+        <div>
+          <label>Glättung (Messwerte gemittelt, 1 = aus)</label>
+          <input id="smooth" type="number" min="1" max="64">
+        </div>
+        <button id="btnSmooth">Übernehmen</button>
+        <button id="btnReset0">Sensor Frisch neu starten</button>
+        <button id="btnReset1">Sensor Grau neu starten</button>
+        <button id="btnReboot">Controller neu starten</button>
+      </div>
+      <div class="kv" style="margin-top:10px"><span>Firmware</span><b id="fw">–</b></div>
+    </div>
+  </section>
+
+  <section id="tools" class="hidden" style="display:grid;gap:16px">
+    <div class="card">
+      <h2>Terminal</h2>
+      <p style="font-size:14px;color:var(--muted);margin:0 0 6px">
+        Log und Shell der Firmware über Bluetooth (Nordic UART Service). Beispiele:
+        <code>help</code>, <code>kernel uptime</code>, <code>log enable dbg fdc1004</code>.
+      </p>
+      <pre id="term" style="font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;height:220px;overflow:auto;white-space:pre-wrap;margin:0"></pre>
+      <div class="row">
+        <div><input id="termIn" placeholder="Kommando, Enter sendet" autocomplete="off"></div>
+        <button id="termSend">Senden</button>
+        <button id="termClear">Leeren</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Firmware-Update</h2>
+      <p style="font-size:14px;color:var(--muted);margin:0 0 6px">
+        Datei <code>zephyr.signed.bin</code> aus dem Build wählen. Der Upload dauert etwa eine halbe
+        Minute. Danach startet der Controller neu, prüft das neue Image und übernimmt es nach den ersten
+        Messungen dauerhaft. Schlägt der Start fehl, kehrt der Bootloader zur alten Version zurück.
+      </p>
+      <div class="kv" style="margin-bottom:8px">
+        <span>Aktive Version</span><b id="fwActive">–</b>
+        <span>Zweiter Slot</span><b id="fwSlot1">–</b>
+      </div>
+      <div class="row">
+        <div><input id="fwFile" type="file" accept=".bin"></div>
+        <button id="fwUpload" class="primary">Hochladen und neu starten</button>
+        <button id="fwRefresh">Status lesen</button>
+      </div>
+      <div class="bar" style="margin:12px 0 4px"><div id="fwBar" style="background:var(--accent)"></div></div>
+      <div id="fwStatus" style="font-size:13px;color:var(--muted)">–</div>
+    </div>
+  </section>
+
+  <div class="card">
+    <details><summary>Protokoll</summary><pre id="log"></pre></details>
+  </div>
+</main>
+
+<script>
+(() => {
+  'use strict';
+
+  const UUID = (n) => `5e4b000${n}-8c47-4e1b-9d3a-6f2a8f0a9c00`;
+  const SVC = UUID(1), CH_STATUS = [UUID(2), UUID(3)], CH_CAL = [UUID(4), UUID(5)];
+  const CH_CONFIG = UUID(6), CH_CMD = UUID(7), CH_FORD = UUID(8);
+  const COMPANY_ID = 0xffff;
+  const TANK_NAME = ['Frischwasser', 'Grauwasser'];
+  const STAGE_NAME = [['leer', '1/3', '2/3', 'voll'], ['leer', 'voll']];
+  const FLAG = [
+    [0x01, 'Sensor OK', 'ok', 'Sensor fehlt', 'bad'],
+    [0x02, 'kalibriert', 'ok', 'nicht kalibriert', 'warn'],
+    [0x04, 'Referenz trocken', 'warn', null, null],
+    [0x08, 'Messbereich überschritten', 'bad', null, null],
+    [0x10, 'unter Tabelle', 'warn', null, null],
+    [0x20, 'über Tabelle', 'warn', null, null],
+  ];
+  const CMD = { ADD: 1, CLEAR: 2, REMOVE: 3, CAPACITY: 4, MODE: 5, FORD: 6, SMOOTH: 7,
+                OVERRIDE: 8, SAVE: 9, SENSOR_RESET: 10, REBOOT: 11 };
+  // Nordic UART Service (shell + log) and SMP (mcumgr firmware update)
+  const NUS_SVC = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+  const NUS_RX = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';   // write to device
+  const NUS_TX = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';   // notify from device
+  const SMP_SVC = '8d53dc1d-1db7-4cd3-868b-8a527460aa84';
+  const SMP_CHR = 'da2e7828-fbce-4e01-ae9e-261174997c48';
+
+  const $ = (sel, root = document) => root.querySelector(sel);
+  const logEl = $('#log');
+  const log = (msg) => {
+    const t = new Date().toLocaleTimeString('de-DE');
+    logEl.textContent = `${t} ${msg}\n` + logEl.textContent.slice(0, 6000);
+  };
+
+  let device = null, server = null, chars = {}, cal = [null, null], busy = false;
+
+  if (!navigator.bluetooth) {
+    $('#noBle').classList.remove('hidden');
+    $('#btnConnect').disabled = true;
+  }
+
+  // ---------------- rendering ----------------
+
+  function renderTank(t, st) {
+    const el = $(`#tank${t}`);
+    const pct = st.percent === 255 ? null : st.percent;
+    $('.pct', el).textContent = pct === null ? '–' : `${pct} %`;
+    $('.liters', el).textContent = (st.flags & 0x02) ? `${(st.liters_dl / 10).toFixed(1)} l` : 'nicht kalibriert';
+    $('.gauge .fill', el).style.height = `${pct ?? 0}%`;
+    $('.gauge .vessel', el).classList.toggle('stale', pct === null);
+    if (st.c_level_mpf !== undefined) {
+      $('.cl', el).textContent = `${(st.c_level_mpf / 1000).toFixed(3)} pF`;
+      $('.cr', el).textContent = `${(st.c_liq_mpf / 1000).toFixed(3)} pF`;
+      $('.ce', el).textContent = `${(st.c_env_mpf / 1000).toFixed(3)} pF`;
+      $('.s', el).textContent = (st.s_micro / 1e6).toFixed(4);
+    }
+    if (st.stage !== undefined) {
+      $('.stage', el).textContent = STAGE_NAME[t][st.stage] ?? `Stufe ${st.stage}`;
+    }
+    const flags = $('.flags', el);
+    flags.innerHTML = '';
+    for (const [bit, onText, onCls, offText, offCls] of FLAG) {
+      const on = (st.flags & bit) !== 0;
+      const text = on ? onText : offText, cls = on ? onCls : offCls;
+      if (!text) continue;
+      const span = document.createElement('span');
+      span.textContent = text; span.className = cls;
+      flags.appendChild(span);
+    }
+  }
+
+  function renderFord(f) {
+    const stages = [f.fresh_stage, f.grey_stage], over = [f.fresh_override, f.grey_override];
+    for (let t = 0; t < 2; t++) {
+      const el = $(`#tank${t}`);
+      $('.stage', el).textContent = (STAGE_NAME[t][stages[t]] ?? `Stufe ${stages[t]}`) +
+        (over[t] !== 255 ? ' (erzwungen)' : '');
+      document.querySelectorAll(`.stagebtns[data-tank="${t}"] button`).forEach(b => {
+        b.classList.toggle('active', Number(b.dataset.stage) === over[t]);
+      });
+    }
+  }
+
+  function renderCal(t) {
+    const c = cal[t], el = $(`#cal${t}`);
+    if (!c) { el.innerHTML = `<h2>Kalibrierung ${TANK_NAME[t]}</h2><p>–</p>`; return; }
+    const rows = c.points.map((p, i) => `
+      <tr><td>${i + 1}</td><td>${(p.liters_dl / 10).toFixed(1)} l</td>
+          <td>${(p.s_micro / 1e6).toFixed(4)}</td>
+          <td><button data-act="remove" data-idx="${i}">Löschen</button></td></tr>`).join('');
+    el.innerHTML = `
+      <h2>Kalibrierung ${TANK_NAME[t]}</h2>
+      <p style="font-size:14px;color:var(--muted);margin:0 0 6px">
+        Bei bekannter Füllmenge die Liter eintragen und den Punkt speichern. Mindestens zwei Punkte
+        (leer und voll) sind nötig, weitere Zwischenpunkte verbessern die Linearität.
+      </p>
+      <div class="row">
+        <div><label>Aktuelle Füllmenge (Liter)</label><input data-f="liters" type="number" step="0.1" min="0" max="6000"></div>
+        <button data-act="add" class="primary">Punkt speichern</button>
+        <button data-act="empty">Leer (0 l)</button>
+      </div>
+      <div class="row">
+        <div><label>Tankinhalt für 100 % (Liter, 0 = höchster Punkt)</label>
+             <input data-f="capacity" type="number" step="0.1" min="0" max="6000" value="${(c.capacity_dl / 10).toFixed(1)}"></div>
+        <button data-act="capacity">Übernehmen</button>
+        <div><label>Messmodus</label>
+          <select data-f="mode">
+            <option value="0" ${c.mode === 0 ? 'selected' : ''}>Verhältnis (LEVEL zu Referenzen)</option>
+            <option value="1" ${c.mode === 1 ? 'selected' : ''}>Roh (nur LEVEL in pF)</option>
+          </select></div>
+        <button data-act="mode">Modus setzen</button>
+      </div>
+      <table><thead><tr><th>#</th><th>Liter</th><th>Sensorwert s</th><th></th></tr></thead>
+        <tbody>${rows || '<tr><td colspan="4" style="color:var(--muted)">keine Punkte</td></tr>'}</tbody></table>
+      <div class="row"><button data-act="clear">Alle Punkte löschen</button></div>`;
+    el.querySelectorAll('button[data-act]').forEach(b => b.addEventListener('click', () => onCalAction(t, b)));
+  }
+
+  // ---------------- parsing ----------------
+
+  function parseStatus(dv) {
+    return { c_level_mpf: dv.getInt32(0, true), c_liq_mpf: dv.getInt32(4, true),
+             c_env_mpf: dv.getInt32(8, true), s_micro: dv.getInt32(12, true),
+             liters_dl: dv.getUint16(16, true), percent: dv.getUint8(18), flags: dv.getUint8(19) };
+  }
+  function parseCal(dv) {
+    const c = { mode: dv.getUint8(0), count: dv.getUint8(1), capacity_dl: dv.getUint16(2, true), points: [] };
+    for (let i = 0; i < c.count && 4 + i * 6 + 6 <= dv.byteLength; i++) {
+      c.points.push({ s_micro: dv.getInt32(4 + i * 6, true), liters_dl: dv.getUint16(8 + i * 6, true) });
+    }
+    return c;
+  }
+  function parseFord(dv) {
+    return { fresh_stage: dv.getUint8(0), grey_stage: dv.getUint8(1),
+             fresh_override: dv.getUint8(2), grey_override: dv.getUint8(3) };
+  }
+  function parseAdv(dv) {
+    if (dv.getUint8(0) !== 1) return null;
+    return {
+      fresh: { percent: dv.getUint8(1), liters_dl: dv.getUint16(3, true), flags: dv.getUint8(7), stage: dv.getUint8(9) },
+      grey:  { percent: dv.getUint8(2), liters_dl: dv.getUint16(5, true), flags: dv.getUint8(8), stage: dv.getUint8(10) },
+    };
+  }
+
+  // ---------------- BLE ----------------
+
+  async function connect() {
+    try {
+      device = await navigator.bluetooth.requestDevice({
+        filters: [{ namePrefix: 'NTM' }],
+        optionalServices: [SVC, 'device_information', NUS_SVC, SMP_SVC] });
+      device.addEventListener('gattserverdisconnected', onDisconnected);
+      setStatus('Verbinde …');
+      server = await device.gatt.connect();
+      const svc = await server.getPrimaryService(SVC);
+      for (let t = 0; t < 2; t++) {
+        chars[`status${t}`] = await svc.getCharacteristic(CH_STATUS[t]);
+        chars[`cal${t}`] = await svc.getCharacteristic(CH_CAL[t]);
+      }
+      chars.config = await svc.getCharacteristic(CH_CONFIG);
+      chars.cmd = await svc.getCharacteristic(CH_CMD);
+      chars.ford = await svc.getCharacteristic(CH_FORD);
+
+      for (let t = 0; t < 2; t++) {
+        chars[`status${t}`].addEventListener('characteristicvaluechanged', e => renderTank(t, parseStatus(e.target.value)));
+        await chars[`status${t}`].startNotifications();
+        renderTank(t, parseStatus(await chars[`status${t}`].readValue()));
+      }
+      chars.ford.addEventListener('characteristicvaluechanged', e => renderFord(parseFord(e.target.value)));
+      await chars.ford.startNotifications();
+      renderFord(parseFord(await chars.ford.readValue()));
+
+      await refreshCal(0); await refreshCal(1); await refreshConfig();
+      await setupTools(server);
+      $('#controls').classList.remove('hidden');
+      $('#tools').classList.remove('hidden');
+      $('#btnConnect').textContent = 'Trennen';
+      setStatus(`Verbunden mit ${device.name}`);
+      log(`verbunden: ${device.name}`);
+    } catch (e) {
+      log(`Fehler: ${e.message || e}`);
+      setStatus('Nicht verbunden');
+      if (device?.gatt?.connected) device.gatt.disconnect();
+    }
+  }
+
+  function onDisconnected() {
+    log('Verbindung getrennt');
+    setStatus('Nicht verbunden');
+    $('#controls').classList.add('hidden');
+    $('#tools').classList.add('hidden');
+    $('#btnConnect').textContent = 'Verbinden';
+    chars = {}; server = null; nus = null; smp = null;
+    startAdvWatch();
+  }
+
+  function setStatus(s) { $('#status').textContent = s; }
+
+  async function refreshCal(t) {
+    cal[t] = parseCal(await chars[`cal${t}`].readValue());
+    renderCal(t);
+  }
+  async function refreshConfig() {
+    const dv = await chars.config.readValue();
+    $('#thr0').value = dv.getUint8(0); $('#thr1').value = dv.getUint8(1); $('#thr2').value = dv.getUint8(2);
+    $('#thrG').value = dv.getUint8(3); $('#hyst').value = dv.getUint8(4); $('#smooth').value = dv.getUint8(5);
+    $('#fw').textContent = `${dv.getUint8(6)}.${dv.getUint8(7)}`;
+  }
+
+  async function sendCmd(bytes, label) {
+    if (!chars.cmd || busy) return false;
+    busy = true;
+    try {
+      await chars.cmd.writeValueWithResponse(new Uint8Array(bytes));
+      log(`${label}: ok`);
+      return true;
+    } catch (e) {
+      log(`${label}: abgelehnt (${e.message || e})`);
+      return false;
+    } finally { busy = false; }
+  }
+  const u16 = (v) => [v & 0xff, (v >> 8) & 0xff];
+
+  async function onCalAction(t, btn) {
+    const el = $(`#cal${t}`), act = btn.dataset.act;
+    const liters = parseFloat($('[data-f="liters"]', el).value);
+    if (act === 'add') {
+      if (!(liters >= 0)) { log('Bitte Liter eintragen'); return; }
+      if (await sendCmd([CMD.ADD, t, ...u16(Math.round(liters * 10))], `Punkt ${liters} l`)) await refreshCal(t);
+    } else if (act === 'empty') {
+      if (await sendCmd([CMD.ADD, t, 0, 0], 'Punkt leer')) await refreshCal(t);
+    } else if (act === 'remove') {
+      if (await sendCmd([CMD.REMOVE, t, Number(btn.dataset.idx)], 'Punkt löschen')) await refreshCal(t);
+    } else if (act === 'clear') {
+      if (await sendCmd([CMD.CLEAR, t], 'Tabelle löschen')) await refreshCal(t);
+    } else if (act === 'capacity') {
+      const cap = parseFloat($('[data-f="capacity"]', el).value) || 0;
+      if (await sendCmd([CMD.CAPACITY, t, ...u16(Math.round(cap * 10))], `Inhalt ${cap} l`)) await refreshCal(t);
+    } else if (act === 'mode') {
+      const mode = Number($('[data-f="mode"]', el).value);
+      if (mode !== cal[t].mode && cal[t].count &&
+          !confirm('Ein Moduswechsel löscht die vorhandenen Kalibrierpunkte. Fortfahren?')) return;
+      if (await sendCmd([CMD.MODE, t, mode], 'Modus')) await refreshCal(t);
+    }
+  }
+
+  $('#btnConnect').addEventListener('click', () => {
+    if (device?.gatt?.connected) device.gatt.disconnect(); else connect();
+  });
+  $('#btnFord').addEventListener('click', async () => {
+    const v = ['#thr0', '#thr1', '#thr2', '#thrG', '#hyst'].map(s => Number($(s).value));
+    if (await sendCmd([CMD.FORD, ...v], 'Ford-Schwellen')) await refreshConfig();
+  });
+  $('#btnSmooth').addEventListener('click', async () => {
+    if (await sendCmd([CMD.SMOOTH, Number($('#smooth').value)], 'Glättung')) await refreshConfig();
+  });
+  $('#btnReset0').addEventListener('click', () => sendCmd([CMD.SENSOR_RESET, 0], 'Sensor Frisch neu'));
+  $('#btnReset1').addEventListener('click', () => sendCmd([CMD.SENSOR_RESET, 1], 'Sensor Grau neu'));
+  $('#btnReboot').addEventListener('click', () => sendCmd([CMD.REBOOT], 'Neustart'));
+  document.querySelectorAll('.stagebtns button').forEach(b => b.addEventListener('click', () => {
+    const t = Number(b.parentElement.dataset.tank);
+    sendCmd([CMD.OVERRIDE, t, Number(b.dataset.stage)], `Anzeige ${TANK_NAME[t]}`);
+  }));
+
+  // ---------------- terminal over NUS ----------------
+
+  let nus = null, smp = null;
+  const termEl = $('#term');
+  const stripAnsi = (s) => s.replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '').replace(/\r/g, '');
+  const termWrite = (s) => {
+    termEl.textContent = (termEl.textContent + s).slice(-20000);
+    termEl.scrollTop = termEl.scrollHeight;
+  };
+  const utf8 = new TextDecoder(), enc = new TextEncoder();
+
+  async function setupTools(server) {
+    try {
+      const s = await server.getPrimaryService(NUS_SVC);
+      nus = { rx: await s.getCharacteristic(NUS_RX), tx: await s.getCharacteristic(NUS_TX) };
+      nus.tx.addEventListener('characteristicvaluechanged', e =>
+        termWrite(stripAnsi(utf8.decode(e.target.value))));
+      await nus.tx.startNotifications();
+      termWrite('--- Terminal verbunden ---\n');
+    } catch (e) { log(`Terminal nicht verfügbar: ${e.message || e}`); nus = null; }
+    try {
+      const s = await server.getPrimaryService(SMP_SVC);
+      smp = { chr: await s.getCharacteristic(SMP_CHR), seq: 0, pending: null, rxbuf: new Uint8Array(0) };
+      smp.chr.addEventListener('characteristicvaluechanged', e => smpOnNotify(new Uint8Array(e.target.value.buffer)));
+      await smp.chr.startNotifications();
+      await fwRefresh();
+    } catch (e) { log(`Firmware-Update nicht verfügbar: ${e.message || e}`); smp = null; }
+    try {
+      const dis = await server.getPrimaryService('device_information');
+      const rev = await (await dis.getCharacteristic('firmware_revision_string')).readValue();
+      $('#fw').textContent = utf8.decode(rev);
+    } catch (e) { /* optional */ }
+  }
+
+  async function termSend() {
+    const line = $('#termIn').value;
+    if (!nus) return;
+    $('#termIn').value = '';
+    try { await nus.rx.writeValueWithoutResponse(enc.encode(line + '\n')); }
+    catch (e) { log(`Terminal senden: ${e.message || e}`); }
+  }
+  $('#termSend').addEventListener('click', termSend);
+  $('#termIn').addEventListener('keydown', e => { if (e.key === 'Enter') termSend(); });
+  $('#termClear').addEventListener('click', () => { termEl.textContent = ''; });
+
+  // ---------------- minimal CBOR (what SMP needs) ----------------
+
+  function cborEncode(v) {
+    const out = [];
+    const head = (major, n) => {
+      if (n < 24) out.push((major << 5) | n);
+      else if (n < 0x100) out.push((major << 5) | 24, n);
+      else if (n < 0x10000) out.push((major << 5) | 25, n >> 8, n & 0xff);
+      else out.push((major << 5) | 26, (n >>> 24) & 0xff, (n >>> 16) & 0xff, (n >>> 8) & 0xff, n & 0xff);
+    };
+    const enc1 = (x) => {
+      if (x === true) out.push(0xf5);
+      else if (x === false) out.push(0xf4);
+      else if (x === null || x === undefined) out.push(0xf6);
+      else if (typeof x === 'number') { if (x >= 0) head(0, x); else head(1, -1 - x); }
+      else if (typeof x === 'string') { const b = enc.encode(x); head(3, b.length); out.push(...b); }
+      else if (x instanceof Uint8Array) { head(2, x.length); for (const b of x) out.push(b); }
+      else if (Array.isArray(x)) { head(4, x.length); x.forEach(enc1); }
+      else { const k = Object.keys(x); head(5, k.length); k.forEach(key => { enc1(key); enc1(x[key]); }); }
+    };
+    enc1(v);
+    return new Uint8Array(out);
+  }
+
+  function cborDecode(buf) {
+    let i = 0;
+    const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+    const arg = (ai) => {
+      if (ai < 24) return ai;
+      if (ai === 24) return buf[i++];
+      if (ai === 25) { const v = dv.getUint16(i); i += 2; return v; }
+      if (ai === 26) { const v = dv.getUint32(i); i += 4; return v; }
+      if (ai === 27) { const hi = dv.getUint32(i), lo = dv.getUint32(i + 4); i += 8; return hi * 4294967296 + lo; }
+      return -1; // indefinite length
+    };
+    const dec = () => {
+      const b = buf[i++], major = b >> 5, ai = b & 31;
+      const n = arg(ai);
+      switch (major) {
+        case 0: return n;
+        case 1: return -1 - n;
+        case 2: { const v = buf.slice(i, i + n); i += n; return v; }
+        case 3: { const v = utf8.decode(buf.slice(i, i + n)); i += n; return v; }
+        case 4: { const a = []; if (n < 0) { while (buf[i] !== 0xff) a.push(dec()); i++; } else for (let k = 0; k < n; k++) a.push(dec()); return a; }
+        case 5: { const o = {}; if (n < 0) { while (buf[i] !== 0xff) { const k = dec(); o[k] = dec(); } i++; } else for (let k = 0; k < n; k++) { const key = dec(); o[key] = dec(); } return o; }
+        case 7:
+          if (ai === 20) return false; if (ai === 21) return true; if (ai === 22 || ai === 23) return null;
+          if (ai === 25) { i -= 2; const h = dv.getUint16(i); i += 2; return h; }
+          if (ai === 26) { i -= 4; const v = dv.getFloat32(i); i += 4; return v; }
+          if (ai === 27) { i -= 8; const v = dv.getFloat64(i); i += 8; return v; }
+          return null;
+        default: throw new Error('CBOR: tag nicht unterstützt');
+      }
+    };
+    return dec();
+  }
+
+  // ---------------- SMP (mcumgr) over BLE ----------------
+
+  const SMP_OP_READ = 0, SMP_OP_WRITE = 2, SMP_GRP_OS = 0, SMP_GRP_IMG = 1;
+  let smpChunk = 244; // ATT MTU 247 requested by the firmware; falls back to 20
+
+  function smpOnNotify(bytes) {
+    const buf = new Uint8Array(smp.rxbuf.length + bytes.length);
+    buf.set(smp.rxbuf); buf.set(bytes, smp.rxbuf.length);
+    smp.rxbuf = buf;
+    if (buf.length < 8) return;
+    const len = (buf[2] << 8) | buf[3];
+    if (buf.length < 8 + len) return;
+    const frame = buf.slice(0, 8 + len);
+    smp.rxbuf = buf.slice(8 + len);
+    const hdr = { op: frame[0], group: (frame[4] << 8) | frame[5], seq: frame[6], id: frame[7] };
+    let body; try { body = cborDecode(frame.slice(8)); } catch (e) { body = { rc: -1, err: String(e) }; }
+    if (smp.pending && smp.pending.seq === hdr.seq) { const p = smp.pending; smp.pending = null; p.resolve(body); }
+  }
+
+  async function smpRequest(op, group, id, payload, timeoutMs = 8000) {
+    const body = cborEncode(payload);
+    const seq = smp.seq = (smp.seq + 1) & 0xff;
+    const frame = new Uint8Array(8 + body.length);
+    frame.set([op, 0, body.length >> 8, body.length & 0xff, group >> 8, group & 0xff, seq, id]);
+    frame.set(body, 8);
+    const result = new Promise((resolve, reject) => {
+      smp.pending = { seq, resolve };
+      setTimeout(() => { if (smp.pending && smp.pending.seq === seq) { smp.pending = null; reject(new Error('SMP Timeout')); } }, timeoutMs);
+    });
+    for (let off = 0; off < frame.length; off += smpChunk) {
+      const part = frame.slice(off, off + smpChunk);
+      try { await smp.chr.writeValueWithoutResponse(part); }
+      catch (e) {
+        if (smpChunk > 20) { smpChunk = 20; log('SMP: kleine Pakete (MTU 23)'); return smpRequest(op, group, id, payload, timeoutMs); }
+        throw e;
+      }
+    }
+    return result;
+  }
+
+  const hex = (u8) => Array.from(u8, b => b.toString(16).padStart(2, '0')).join('');
+
+  async function fwRefresh() {
+    if (!smp) return null;
+    const st = await smpRequest(SMP_OP_READ, SMP_GRP_IMG, 0, {});
+    const imgs = st.images || [];
+    const fmt = (im) => im ? `${im.version}${im.active ? ' (aktiv)' : ''}${im.confirmed ? ', bestätigt' : ''}${im.pending ? ', wartet auf Neustart' : ''}` : '–';
+    $('#fwActive').textContent = fmt(imgs.find(i => i.slot === 0));
+    $('#fwSlot1').textContent = fmt(imgs.find(i => i.slot === 1));
+    return imgs;
+  }
+
+  async function fwUpload() {
+    const file = $('#fwFile').files[0];
+    if (!smp || !file) { log('Keine Datei gewählt'); return; }
+    const data = new Uint8Array(await file.arrayBuffer());
+    const status = (s) => { $('#fwStatus').textContent = s; };
+    const bar = (f) => { $('#fwBar').style.width = `${Math.round(f * 100)}%`; };
+    $('#fwUpload').disabled = true;
+    try {
+      // Image header sanity check: MCUboot magic 0x96f3b83d little endian.
+      if (!(data[0] === 0x3d && data[1] === 0xb8 && data[2] === 0xf3 && data[3] === 0x96)) {
+        throw new Error('Keine signierte MCUboot-Datei (zephyr.signed.bin erwartet)');
+      }
+      status('Lade hoch …'); bar(0);
+      let off = 0;
+      const t0 = Date.now();
+      while (off < data.length) {
+        // Leave room for the SMP header and CBOR keys inside one chunk.
+        const room = smpChunk - 8 - (off === 0 ? 40 : 24);
+        const piece = data.slice(off, off + Math.max(16, room));
+        const req = { image: 0, off, data: piece };
+        if (off === 0) req.len = data.length;
+        const rsp = await smpRequest(SMP_OP_WRITE, SMP_GRP_IMG, 1, req, 15000);
+        if (rsp.rc && rsp.rc !== 0) throw new Error(`Upload abgelehnt (rc=${rsp.rc})`);
+        if (typeof rsp.off !== 'number') throw new Error('Unerwartete Antwort beim Upload');
+        off = rsp.off;
+        bar(off / data.length);
+      }
+      status(`Upload fertig (${((Date.now() - t0) / 1000).toFixed(1)} s). Markiere Image …`);
+      const imgs = await fwRefresh();
+      const slot1 = imgs.find(i => i.slot === 1);
+      if (!slot1) throw new Error('Image im zweiten Slot nicht gefunden');
+      const w = await smpRequest(SMP_OP_WRITE, SMP_GRP_IMG, 0, { hash: slot1.hash, confirm: false });
+      if (w.rc && w.rc !== 0) throw new Error(`Markieren abgelehnt (rc=${w.rc})`);
+      const after = await fwRefresh();
+      if (!after.find(i => i.slot === 1)?.pending) throw new Error('Image wurde nicht als "pending" markiert');
+      status(`Version ${slot1.version} markiert. Starte neu …`);
+      await smpRequest(SMP_OP_WRITE, SMP_GRP_OS, 5, {}).catch(() => {});
+      status(`Neustart ausgelöst. Der Wechsel dauert etwa 10 s, danach neu verbinden.`);
+      log(`Firmware ${slot1.version} hochgeladen`);
+    } catch (e) {
+      status(`Fehler: ${e.message || e}`); log(`Update: ${e.message || e}`);
+    } finally { $('#fwUpload').disabled = false; }
+  }
+  $('#fwUpload').addEventListener('click', fwUpload);
+  $('#fwRefresh').addEventListener('click', () => fwRefresh().catch(e => log(`Status: ${e.message || e}`)));
+
+  // ---------------- passive advertising (where the browser supports it) ----------------
+
+  async function startAdvWatch() {
+    if (!device || typeof device.watchAdvertisements !== 'function') return;
+    try {
+      device.addEventListener('advertisementreceived', (ev) => {
+        const dv = ev.manufacturerData.get(COMPANY_ID);
+        if (!dv) return;
+        const a = parseAdv(dv);
+        if (!a) return;
+        renderTank(0, a.fresh); renderTank(1, a.grey);
+        setStatus(`Advertising empfangen (${ev.rssi} dBm)`);
+      });
+      await device.watchAdvertisements();
+      log('Advertising-Empfang aktiv');
+    } catch (e) {
+      log(`Advertising-Empfang nicht verfügbar: ${e.message || e}`);
+    }
+  }
+})();
+</script>
+</body>
+</html>
