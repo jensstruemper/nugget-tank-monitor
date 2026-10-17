@@ -246,7 +246,7 @@
     [0x20, 'über Tabelle', 'warn', null, null],
   ];
   const CMD = { ADD: 1, CLEAR: 2, REMOVE: 3, CAPACITY: 4, MODE: 5, FORD: 6, SMOOTH: 7,
-                OVERRIDE: 8, SAVE: 9, SENSOR_RESET: 10, REBOOT: 11 };
+                OVERRIDE: 8, SAVE: 9, SENSOR_RESET: 10, REBOOT: 11, DEFAULT: 12 };
   // Nordic UART Service (shell + log) and SMP (mcumgr firmware update)
   const NUS_SVC = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
   const NUS_RX = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';   // write to device
@@ -321,7 +321,7 @@
       <h2>Kalibrierung ${TANK_NAME[t]}</h2>
       <p style="font-size:14px;color:var(--muted);margin:0 0 6px">
         Bei bekannter Füllmenge die Liter eintragen und den Punkt speichern. Mindestens zwei Punkte
-        (leer und voll) sind nötig, weitere Zwischenpunkte verbessern die Linearität.
+        (leer und voll) sind nötig, bis zu 32. Wo der Tank seine Form ändert, die Punkte dichter legen.
       </p>
       <div class="row">
         <div><label>Aktuelle Füllmenge (Liter)</label><input data-f="liters" type="number" step="0.1" min="0" max="6000"></div>
@@ -341,7 +341,8 @@
       </div>
       <table><thead><tr><th>#</th><th>Liter</th><th>Sensorwert s</th><th></th></tr></thead>
         <tbody>${rows || '<tr><td colspan="4" style="color:var(--muted)">keine Punkte</td></tr>'}</tbody></table>
-      <div class="row"><button data-act="clear">Alle Punkte löschen</button></div>`;
+      <div class="row"><button data-act="clear">Alle Punkte löschen</button>
+        <button data-act="default">Standardtabelle laden (37 l)</button></div>`;
     el.querySelectorAll('button[data-act]').forEach(b => b.addEventListener('click', () => onCalAction(t, b)));
   }
 
@@ -462,6 +463,9 @@
       if (await sendCmd([CMD.REMOVE, t, Number(btn.dataset.idx)], 'Punkt löschen')) await refreshCal(t);
     } else if (act === 'clear') {
       if (await sendCmd([CMD.CLEAR, t], 'Tabelle löschen')) await refreshCal(t);
+    } else if (act === 'default') {
+      if (cal[t].count && !confirm('Die vorhandenen Punkte werden durch die Standardtabelle ersetzt. Fortfahren?')) return;
+      if (await sendCmd([CMD.DEFAULT, t], 'Standardtabelle')) await refreshCal(t);
     } else if (act === 'capacity') {
       const cap = parseFloat($('[data-f="capacity"]', el).value) || 0;
       if (await sendCmd([CMD.CAPACITY, t, ...u16(Math.round(cap * 10))], `Inhalt ${cap} l`)) await refreshCal(t);
