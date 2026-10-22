@@ -393,12 +393,32 @@
   // page load; both buttons reuse that pick.
   async function pickDevice() {
     if (device) return device;
-    device = await navigator.bluetooth.requestDevice({
+    useDevice(await navigator.bluetooth.requestDevice({
       filters: [{ namePrefix: 'NTM' }],
-      optionalServices: [SVC, 'device_information', SMP_SVC] });
+      optionalServices: [SVC, 'device_information', SMP_SVC] }));
+    return device;
+  }
+
+  function useDevice(d) {
+    device = d;
     device.addEventListener('gattserverdisconnected', onDisconnected);
     device.addEventListener('advertisementreceived', onAdvertisement);
-    return device;
+  }
+
+  // Where the browser remembers permitted devices (getDevices), the home
+  // page starts receiving on load without a tap.
+  async function autoReceive() {
+    if (typeof navigator.bluetooth?.getDevices !== 'function') return;
+    try {
+      const known = (await navigator.bluetooth.getDevices()).filter(d => d.name?.startsWith('NTM'));
+      if (!known.length || device) return;
+      useDevice(known[0]);
+      log(`Gerät gemerkt: ${device.name}, starte Empfang`);
+      if (await startAdvWatch()) return;
+      await connectStatus();
+    } catch (e) {
+      log(`Automatischer Empfang: ${e.message || e}`);
+    }
   }
 
   // Home page: advertising only, no connection. Where the browser cannot
@@ -541,6 +561,7 @@
   }
 
   $('#btnReceive').addEventListener('click', startReceive);
+  autoReceive();
   $('#btnSettings').addEventListener('click', () => { if (settingsOpen) closeSettings(); else openSettings(); });
   $('#btnClose').addEventListener('click', closeSettings);
   $('#btnFord').addEventListener('click', async () => {
