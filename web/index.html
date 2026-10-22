@@ -264,7 +264,7 @@
   };
 
   let device = null, server = null, chars = {}, cal = [null, null], busy = false;
-  let smp = null, advWatching = false, settingsOpen = false;
+  let smp = null, advWatching = false, settingsOpen = false, needRepick = false, lastAdv = 0;
   const utf8 = new TextDecoder(), enc = new TextEncoder();
 
   if (!navigator.bluetooth) {
@@ -394,9 +394,12 @@
   // page load; both buttons reuse that pick.
   async function pickDevice() {
     if (device) return device;
+    // Chrome strips manufacturer data from advertisement events unless the
+    // company ID was requested here.
     useDevice(await navigator.bluetooth.requestDevice({
       filters: [{ namePrefix: 'NTM' }],
-      optionalServices: [SVC, 'device_information', SMP_SVC] }));
+      optionalServices: [SVC, 'device_information', SMP_SVC],
+      optionalManufacturerData: [COMPANY_ID] }));
     return device;
   }
 
@@ -427,6 +430,11 @@
   // characteristics (no pairing needed).
   async function startReceive() {
     try {
+      if (needRepick && device) {
+        device.removeEventListener('gattserverdisconnected', onDisconnected);
+        device.removeEventListener('advertisementreceived', onAdvertisement);
+        device = null; needRepick = false;
+      }
       await pickDevice();
       if (await startAdvWatch()) return;
       await connectStatus();
@@ -756,9 +764,19 @@
 
   function onAdvertisement(ev) {
     const dv = ev.manufacturerData.get(COMPANY_ID);
-    if (!dv) return;
+    if (!dv) {
+      // A permission granted before optionalManufacturerData existed: the
+      // device has to be picked once more.
+      if (!settingsOpen && !document.body.classList.contains('connected')) {
+        setStatus('Advertising ohne Daten: bitte einmal „Empfangen“ tippen');
+        $('#btnReceive').classList.remove('hidden');
+        needRepick = true;
+      }
+      return;
+    }
     const a = parseAdv(dv);
     if (!a) return;
+    lastAdv = Date.now();
     if (!document.body.classList.contains('connected')) {
       renderTank(0, a.fresh); renderTank(1, a.grey);
     }
@@ -778,6 +796,15 @@
       $('#btnReceive').classList.add('hidden');
       setStatus('Empfange Advertising …');
       log('Advertising-Empfang aktiv');
+      const since = Date.now();
+      // The NTM advertises every 0.4 to 0.6 s; 10 s without data means the
+      // browser delivers nothing usable.
+      setTimeout(() => {
+        if (lastAdv >= since || settingsOpen || document.body.classList.contains('connected')) return;
+        setStatus('Kein Advertising empfangen: „Empfangen“ tippen und Gerät neu wählen');
+        $('#btnReceive').classList.remove('hidden');
+        needRepick = true;
+      }, 10000);
       return true;
     } catch (e) {
       log(`Advertising-Empfang nicht verfügbar: ${e.message || e}, verbinde stattdessen`);
