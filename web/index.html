@@ -48,8 +48,9 @@
   .bar > div { height: 100%; width: 0; transition: width .4s; }
   .fresh .bar > div { background: var(--fresh); }
   .grey  .bar > div { background: var(--grey); }
-  .kv { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; font-size: 13px; color: var(--muted); }
-  .kv b { color: var(--text); font-weight: 500; }
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; font-size: 13px; color: var(--muted); }
+  .kv b { color: var(--text); font-weight: 500; white-space: nowrap; }
+  .kv b.stage { white-space: normal; }
   .flags span { display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 10px;
                 border: 1px solid var(--line); margin: 2px 4px 0 0; color: var(--muted); }
   .flags span.bad { color: var(--bad); border-color: var(--bad); }
@@ -117,11 +118,11 @@
         <div class="readout"><div class="pct">–</div><div class="liters">–</div></div>
       </div>
       <div class="kv">
-        <span>Ford-Anzeige</span><b class="stage">–</b>
+        <span>Monitor</span><b class="stage">–</b>
         <span>LEVEL</span><b class="cl">–</b>
         <span class="detail">LIQ_REF</span><b class="cr detail">–</b>
         <span class="detail">ENV_REF</span><b class="ce detail">–</b>
-        <span class="detail">Sensorwert s</span><b class="s detail">–</b>
+        <span class="detail">Sensor</span><b class="s detail">–</b>
       </div>
       <div class="flags"></div>
     </div>
@@ -135,11 +136,11 @@
         <div class="readout"><div class="pct">–</div><div class="liters">–</div></div>
       </div>
       <div class="kv">
-        <span>Ford-Anzeige</span><b class="stage">–</b>
+        <span>Monitor</span><b class="stage">–</b>
         <span>LEVEL</span><b class="cl">–</b>
         <span class="detail">LIQ_REF</span><b class="cr detail">–</b>
         <span class="detail">ENV_REF</span><b class="ce detail">–</b>
-        <span class="detail">Sensorwert s</span><b class="s detail">–</b>
+        <span class="detail">Sensor</span><b class="s detail">–</b>
       </div>
       <div class="flags"></div>
     </div>
