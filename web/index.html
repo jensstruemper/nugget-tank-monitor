@@ -76,6 +76,11 @@
          max-height: 160px; overflow: auto; white-space: pre-wrap; margin: 0; }
   .stagebtns button.active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
   details summary { cursor: pointer; color: var(--muted); font-size: 14px; }
+  .hdr-btns { display: flex; gap: 8px; align-items: center; }
+  .iconbtn { padding: 7px; line-height: 0; }
+  .iconbtn svg { width: 22px; height: 22px; }
+  .iconbtn.active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  body:not(.connected) .detail { display: none; }
 </style>
 </head>
 <body>
@@ -84,7 +89,15 @@
     <h1>Nugget Tankmonitor</h1>
     <div id="status">Nicht verbunden</div>
   </div>
-  <button id="btnConnect" class="primary">Verbinden</button>
+  <div class="hdr-btns">
+    <button id="btnReceive" class="primary">Empfangen</button>
+    <button id="btnSettings" class="iconbtn" aria-label="Einstellungen" title="Einstellungen">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>
+      </svg>
+    </button>
+  </div>
 </header>
 
 <main>
@@ -106,9 +119,9 @@
       <div class="kv">
         <span>Ford-Anzeige</span><b class="stage">–</b>
         <span>LEVEL</span><b class="cl">–</b>
-        <span>LIQ_REF</span><b class="cr">–</b>
-        <span>ENV_REF</span><b class="ce">–</b>
-        <span>Sensorwert s</span><b class="s">–</b>
+        <span class="detail">LIQ_REF</span><b class="cr detail">–</b>
+        <span class="detail">ENV_REF</span><b class="ce detail">–</b>
+        <span class="detail">Sensorwert s</span><b class="s detail">–</b>
       </div>
       <div class="flags"></div>
     </div>
@@ -124,15 +137,21 @@
       <div class="kv">
         <span>Ford-Anzeige</span><b class="stage">–</b>
         <span>LEVEL</span><b class="cl">–</b>
-        <span>LIQ_REF</span><b class="cr">–</b>
-        <span>ENV_REF</span><b class="ce">–</b>
-        <span>Sensorwert s</span><b class="s">–</b>
+        <span class="detail">LIQ_REF</span><b class="cr detail">–</b>
+        <span class="detail">ENV_REF</span><b class="ce detail">–</b>
+        <span class="detail">Sensorwert s</span><b class="s detail">–</b>
       </div>
       <div class="flags"></div>
     </div>
   </section>
 
   <section id="controls" class="hidden" style="display:grid;gap:16px">
+    <div class="card">
+      <div class="row" style="margin:0;justify-content:space-between;align-items:center">
+        <h2 style="margin:0">Einstellungen</h2>
+        <button id="btnClose">Schließen</button>
+      </div>
+    </div>
     <div class="card" id="cal0"></div>
     <div class="card" id="cal1"></div>
 
@@ -184,22 +203,6 @@
       </div>
       <div class="kv" style="margin-top:10px"><span>Firmware</span><b id="fw">–</b></div>
     </div>
-  </section>
-
-  <section id="tools" class="hidden" style="display:grid;gap:16px">
-    <div class="card">
-      <h2>Terminal</h2>
-      <p style="font-size:14px;color:var(--muted);margin:0 0 6px">
-        Log und Shell der Firmware über Bluetooth (Nordic UART Service). Beispiele:
-        <code>help</code>, <code>kernel uptime</code>, <code>log enable dbg fdc1004</code>.
-      </p>
-      <pre id="term" style="font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;height:220px;overflow:auto;white-space:pre-wrap;margin:0"></pre>
-      <div class="row">
-        <div><input id="termIn" placeholder="Kommando, Enter sendet" autocomplete="off"></div>
-        <button id="termSend">Senden</button>
-        <button id="termClear">Leeren</button>
-      </div>
-    </div>
 
     <div class="card">
       <h2>Firmware-Update</h2>
@@ -221,6 +224,7 @@
       <div id="fwStatus" style="font-size:13px;color:var(--muted)">–</div>
     </div>
   </section>
+
 
   <div class="card">
     <details><summary>Protokoll</summary><pre id="log"></pre></details>
@@ -247,10 +251,7 @@
   ];
   const CMD = { ADD: 1, CLEAR: 2, REMOVE: 3, CAPACITY: 4, MODE: 5, FORD: 6, SMOOTH: 7,
                 OVERRIDE: 8, SAVE: 9, SENSOR_RESET: 10, REBOOT: 11, DEFAULT: 12 };
-  // Nordic UART Service (shell + log) and SMP (mcumgr firmware update)
-  const NUS_SVC = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
-  const NUS_RX = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';   // write to device
-  const NUS_TX = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';   // notify from device
+  // SMP (mcumgr firmware update)
   const SMP_SVC = '8d53dc1d-1db7-4cd3-868b-8a527460aa84';
   const SMP_CHR = 'da2e7828-fbce-4e01-ae9e-261174997c48';
 
@@ -262,10 +263,13 @@
   };
 
   let device = null, server = null, chars = {}, cal = [null, null], busy = false;
+  let smp = null, advWatching = false, settingsOpen = false;
+  const utf8 = new TextDecoder(), enc = new TextEncoder();
 
   if (!navigator.bluetooth) {
     $('#noBle').classList.remove('hidden');
-    $('#btnConnect').disabled = true;
+    $('#btnReceive').disabled = true;
+    $('#btnSettings').disabled = true;
   }
 
   // ---------------- rendering ----------------
@@ -277,6 +281,9 @@
     $('.liters', el).textContent = (st.flags & 0x02) ? `${(st.liters_dl / 10).toFixed(1)} l` : 'nicht kalibriert';
     $('.gauge .fill', el).style.height = `${pct ?? 0}%`;
     $('.gauge .vessel', el).classList.toggle('stale', pct === null);
+    if (st.level_cpf !== undefined) {
+      $('.cl', el).textContent = st.level_cpf === 0xffff ? '–' : `${(st.level_cpf / 100).toFixed(2)} pF`;
+    }
     if (st.c_level_mpf !== undefined) {
       $('.cl', el).textContent = `${(st.c_level_mpf / 1000).toFixed(3)} pF`;
       $('.cr', el).textContent = `${(st.c_liq_mpf / 1000).toFixed(3)} pF`;
@@ -364,64 +371,120 @@
     return { fresh_stage: dv.getUint8(0), grey_stage: dv.getUint8(1),
              fresh_override: dv.getUint8(2), grey_override: dv.getUint8(3) };
   }
+  // Format 1 (up to firmware 0.1.11) ends after the sequence number; format 2
+  // appends C_LEVEL of both tanks in 0.01 pF.
   function parseAdv(dv) {
-    if (dv.getUint8(0) !== 1) return null;
-    return {
+    const v = dv.getUint8(0);
+    if (v !== 1 && v !== 2) return null;
+    const a = {
       fresh: { percent: dv.getUint8(1), liters_dl: dv.getUint16(3, true), flags: dv.getUint8(7), stage: dv.getUint8(9) },
       grey:  { percent: dv.getUint8(2), liters_dl: dv.getUint16(5, true), flags: dv.getUint8(8), stage: dv.getUint8(10) },
     };
+    if (v >= 2 && dv.byteLength >= 16) {
+      a.fresh.level_cpf = dv.getUint16(12, true);
+      a.grey.level_cpf = dv.getUint16(14, true);
+    }
+    return a;
   }
 
   // ---------------- BLE ----------------
 
-  async function connect() {
+  // The browser hands out a device only after the user picked it once per
+  // page load; both buttons reuse that pick.
+  async function pickDevice() {
+    if (device) return device;
+    device = await navigator.bluetooth.requestDevice({
+      filters: [{ namePrefix: 'NTM' }],
+      optionalServices: [SVC, 'device_information', SMP_SVC] });
+    device.addEventListener('gattserverdisconnected', onDisconnected);
+    device.addEventListener('advertisementreceived', onAdvertisement);
+    return device;
+  }
+
+  // Home page: advertising only, no connection. Where the browser cannot
+  // watch advertisements, fall back to a connection with the open status
+  // characteristics (no pairing needed).
+  async function startReceive() {
     try {
-      device = await navigator.bluetooth.requestDevice({
-        filters: [{ namePrefix: 'NTM' }],
-        optionalServices: [SVC, 'device_information', NUS_SVC, SMP_SVC] });
-      device.addEventListener('gattserverdisconnected', onDisconnected);
-      setStatus('Verbinde …');
-      server = await device.gatt.connect();
-      const svc = await server.getPrimaryService(SVC);
-      for (let t = 0; t < 2; t++) {
-        chars[`status${t}`] = await svc.getCharacteristic(CH_STATUS[t]);
-        chars[`cal${t}`] = await svc.getCharacteristic(CH_CAL[t]);
-      }
+      await pickDevice();
+      if (await startAdvWatch()) return;
+      await connectStatus();
+    } catch (e) {
+      log(`Empfang: ${e.message || e}`);
+    }
+  }
+
+  async function connectStatus() {
+    setStatus('Verbinde …');
+    server = await device.gatt.connect();
+    const svc = await server.getPrimaryService(SVC);
+    for (let t = 0; t < 2; t++) {
+      chars[`status${t}`] = await svc.getCharacteristic(CH_STATUS[t]);
+      chars[`status${t}`].addEventListener('characteristicvaluechanged', e => renderTank(t, parseStatus(e.target.value)));
+      await chars[`status${t}`].startNotifications();
+      renderTank(t, parseStatus(await chars[`status${t}`].readValue()));
+    }
+    chars.ford = await svc.getCharacteristic(CH_FORD);
+    chars.ford.addEventListener('characteristicvaluechanged', e => renderFord(parseFord(e.target.value)));
+    await chars.ford.startNotifications();
+    renderFord(parseFord(await chars.ford.readValue()));
+    document.body.classList.add('connected');
+    $('#btnReceive').classList.add('hidden');
+    setStatus(`Verbunden mit ${device.name}`);
+    return svc;
+  }
+
+  // Settings: connect, then the first read of a protected characteristic
+  // makes the phone ask for the PIN and pair.
+  async function openSettings() {
+    try {
+      await pickDevice();
+      const svc = server?.connected ? await server.getPrimaryService(SVC) : await connectStatus();
+      for (let t = 0; t < 2; t++) chars[`cal${t}`] = await svc.getCharacteristic(CH_CAL[t]);
       chars.config = await svc.getCharacteristic(CH_CONFIG);
       chars.cmd = await svc.getCharacteristic(CH_CMD);
-      chars.ford = await svc.getCharacteristic(CH_FORD);
-
-      for (let t = 0; t < 2; t++) {
-        chars[`status${t}`].addEventListener('characteristicvaluechanged', e => renderTank(t, parseStatus(e.target.value)));
-        await chars[`status${t}`].startNotifications();
-        renderTank(t, parseStatus(await chars[`status${t}`].readValue()));
+      setStatus('Kopplung … (PIN eingeben, falls das Telefon fragt)');
+      try {
+        await refreshCal(0);
+      } catch (e) {
+        throw new Error(`Kopplung fehlgeschlagen oder PIN falsch (${e.message || e})`);
       }
-      chars.ford.addEventListener('characteristicvaluechanged', e => renderFord(parseFord(e.target.value)));
-      await chars.ford.startNotifications();
-      renderFord(parseFord(await chars.ford.readValue()));
-
-      await refreshCal(0); await refreshCal(1); await refreshConfig();
-      await setupTools(server);
+      await refreshCal(1); await refreshConfig();
+      await setupSmp(server);
+      settingsOpen = true;
       $('#controls').classList.remove('hidden');
-      $('#tools').classList.remove('hidden');
-      $('#btnConnect').textContent = 'Trennen';
-      setStatus(`Verbunden mit ${device.name}`);
-      log(`verbunden: ${device.name}`);
+      $('#btnSettings').classList.add('active');
+      setStatus(`Einstellungen: ${device.name}`);
+      log(`Einstellungen geöffnet: ${device.name}`);
+      $('#controls').scrollIntoView({ behavior: 'smooth' });
     } catch (e) {
       log(`Fehler: ${e.message || e}`);
-      setStatus('Nicht verbunden');
-      if (device?.gatt?.connected) device.gatt.disconnect();
+      setStatus(e.message || String(e));
+      closeSettings();
     }
+  }
+
+  // Leaving the settings drops the connection, so the tank monitor
+  // advertises again for the home page and the beacon.
+  function closeSettings() {
+    settingsOpen = false;
+    $('#controls').classList.add('hidden');
+    $('#btnSettings').classList.remove('active');
+    if (device?.gatt?.connected) device.gatt.disconnect();
   }
 
   function onDisconnected() {
     log('Verbindung getrennt');
-    setStatus('Nicht verbunden');
     $('#controls').classList.add('hidden');
-    $('#tools').classList.add('hidden');
-    $('#btnConnect').textContent = 'Verbinden';
-    chars = {}; server = null; nus = null; smp = null;
-    startAdvWatch();
+    $('#btnSettings').classList.remove('active');
+    document.body.classList.remove('connected');
+    chars = {}; server = null; smp = null; settingsOpen = false;
+    if (advWatching) {
+      setStatus('Empfange Advertising …');
+    } else {
+      setStatus('Nicht verbunden');
+      $('#btnReceive').classList.remove('hidden');
+    }
   }
 
   function setStatus(s) { $('#status').textContent = s; }
@@ -477,9 +540,9 @@
     }
   }
 
-  $('#btnConnect').addEventListener('click', () => {
-    if (device?.gatt?.connected) device.gatt.disconnect(); else connect();
-  });
+  $('#btnReceive').addEventListener('click', startReceive);
+  $('#btnSettings').addEventListener('click', () => { if (settingsOpen) closeSettings(); else openSettings(); });
+  $('#btnClose').addEventListener('click', closeSettings);
   $('#btnFord').addEventListener('click', async () => {
     const v = ['#thr0', '#thr1', '#thr2', '#thrG', '#hyst'].map(s => Number($(s).value));
     if (await sendCmd([CMD.FORD, ...v], 'Ford-Schwellen')) await refreshConfig();
@@ -495,26 +558,9 @@
     sendCmd([CMD.OVERRIDE, t, Number(b.dataset.stage)], `Anzeige ${TANK_NAME[t]}`);
   }));
 
-  // ---------------- terminal over NUS ----------------
+  // ---------------- firmware update service ----------------
 
-  let nus = null, smp = null;
-  const termEl = $('#term');
-  const stripAnsi = (s) => s.replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '').replace(/\r/g, '');
-  const termWrite = (s) => {
-    termEl.textContent = (termEl.textContent + s).slice(-20000);
-    termEl.scrollTop = termEl.scrollHeight;
-  };
-  const utf8 = new TextDecoder(), enc = new TextEncoder();
-
-  async function setupTools(server) {
-    try {
-      const s = await server.getPrimaryService(NUS_SVC);
-      nus = { rx: await s.getCharacteristic(NUS_RX), tx: await s.getCharacteristic(NUS_TX) };
-      nus.tx.addEventListener('characteristicvaluechanged', e =>
-        termWrite(stripAnsi(utf8.decode(e.target.value))));
-      await nus.tx.startNotifications();
-      termWrite('--- Terminal verbunden ---\n');
-    } catch (e) { log(`Terminal nicht verfügbar: ${e.message || e}`); nus = null; }
+  async function setupSmp(server) {
     try {
       const s = await server.getPrimaryService(SMP_SVC);
       smp = { chr: await s.getCharacteristic(SMP_CHR), seq: 0, pending: null, rxbuf: new Uint8Array(0) };
@@ -528,17 +574,6 @@
       $('#fw').textContent = utf8.decode(rev);
     } catch (e) { /* optional */ }
   }
-
-  async function termSend() {
-    const line = $('#termIn').value;
-    if (!nus) return;
-    $('#termIn').value = '';
-    try { await nus.rx.writeValueWithoutResponse(enc.encode(line + '\n')); }
-    catch (e) { log(`Terminal senden: ${e.message || e}`); }
-  }
-  $('#termSend').addEventListener('click', termSend);
-  $('#termIn').addEventListener('keydown', e => { if (e.key === 'Enter') termSend(); });
-  $('#termClear').addEventListener('click', () => { termEl.textContent = ''; });
 
   // ---------------- minimal CBOR (what SMP needs) ----------------
 
@@ -697,21 +732,34 @@
 
   // ---------------- passive advertising (where the browser supports it) ----------------
 
+  function onAdvertisement(ev) {
+    const dv = ev.manufacturerData.get(COMPANY_ID);
+    if (!dv) return;
+    const a = parseAdv(dv);
+    if (!a) return;
+    if (!document.body.classList.contains('connected')) {
+      renderTank(0, a.fresh); renderTank(1, a.grey);
+    }
+    if (!settingsOpen) {
+      setStatus(`Advertising ${new Date().toLocaleTimeString('de-DE')} (${ev.rssi} dBm)`);
+    }
+  }
+
   async function startAdvWatch() {
-    if (!device || typeof device.watchAdvertisements !== 'function') return;
+    if (typeof device.watchAdvertisements !== 'function') {
+      log('Advertising-Empfang: vom Browser nicht unterstützt, verbinde stattdessen');
+      return false;
+    }
     try {
-      device.addEventListener('advertisementreceived', (ev) => {
-        const dv = ev.manufacturerData.get(COMPANY_ID);
-        if (!dv) return;
-        const a = parseAdv(dv);
-        if (!a) return;
-        renderTank(0, a.fresh); renderTank(1, a.grey);
-        setStatus(`Advertising empfangen (${ev.rssi} dBm)`);
-      });
-      await device.watchAdvertisements();
+      if (!device.watchingAdvertisements) await device.watchAdvertisements();
+      advWatching = true;
+      $('#btnReceive').classList.add('hidden');
+      setStatus('Empfange Advertising …');
       log('Advertising-Empfang aktiv');
+      return true;
     } catch (e) {
-      log(`Advertising-Empfang nicht verfügbar: ${e.message || e}`);
+      log(`Advertising-Empfang nicht verfügbar: ${e.message || e}, verbinde stattdessen`);
+      return false;
     }
   }
 })();
